@@ -1,0 +1,25 @@
+README.md
+  s_4c49dfdd236779::t_197ed5195cea3a 3
+  s_4c49dfdd236779::t_9ff513821d01e4 5,7,9-10,12-14,16,18-21,23,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "0451f9a3f669f009792a2b5840eeda0aa675c9a9",
+  "prompts": {},
+  "humans": {
+    "h_387adc9553c490": {
+      "author": "kk <keikeiikm@163.com>"
+    }
+  },
+  "sessions": {
+    "s_4c49dfdd236779": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1889d-5408-7ae3-b349-7651d29dd0ec",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kk <keikeiikm@163.com>"
+    }
+  }
+}
