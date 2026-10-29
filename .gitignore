@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+*.log
+
+
+prd/
+
+data/
+.env*
+!.env.example

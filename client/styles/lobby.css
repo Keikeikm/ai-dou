@@ -1,0 +1,27 @@
+.lobby { flex: 1; position: relative; display: grid; grid-template-rows: auto auto; justify-items: center; align-content: center; gap: 28px; padding: 32px 40px 48px; min-height: 470px; isolation: isolate; background: radial-gradient(ellipse at 50% 35%, #edf0d9, #bfdbc7 65%, #a5c6ad); }
+.lobby::before { content: ''; position: absolute; z-index: -1; width: min(1020px, 88%); height: min(330px, 42vh); top: 46%; left: 50%; transform: translate(-50%, -50%); border-radius: 50%; border: 7px solid #b99a63; background: radial-gradient(ellipse at 50% 25%, #93b69a, #648e72); box-shadow: 0 0 0 2px #f2dfae, 0 0 0 5px #749378, inset 0 0 0 2px #c6d8a3, 0 22px 35px #47684a25; }
+.lobby::after { content: '♠  ♥  ♣  ♦'; position: absolute; z-index: -1; bottom: 29px; color: #547b5e; font: 19px Georgia, serif; letter-spacing: 18px; opacity: .4; pointer-events: none; }
+.lobby-intro { width: 100%; max-width: 640px; text-align: center; }
+.lobby-intro .room-creation { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 18px; }
+.lobby-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: center; }
+.lobby-actions button { font-family: var(--font-game); font-size: 22px; font-weight: 400; line-height: 1.2; min-width: 204px; min-height: 62px; padding: 17px 28px; border-radius: 18px; border: 2px solid #809a6c; background: #f5f1de; box-shadow: 0 5px 0 #809a6c, 0 10px 16px #47684a20; letter-spacing: .02em; transition: transform 150ms ease; }
+.lobby-actions button:hover:not(:disabled) { transform: translateY(-2px); }
+.lobby-actions .primary { font-size: 24px; background: linear-gradient(#f5df9c, #e5c371); border-color: #b89449; box-shadow: 0 5px 0 #ad8c46, 0 10px 16px #47684a20; }
+.human-room-entry { margin: 0; padding: 0; border: 0; }
+.form-message { flex-basis: 100%; margin: 6px 0 0; font-size: 13px; color: #8a4b2c; }
+.lobby-cast { display: flex; align-items: flex-end; justify-content: center; gap: clamp(25px, 5vw, 78px); width: min(1060px, 100%); min-width: 0; min-height: min(420px, 52vh); padding: 16px 12px 28px; }
+.lobby-cast figure { position: relative; margin: 0; width: min(26vw, 275px); min-width: 0; text-align: center; }
+.lobby-cast figure::before { content: ''; position: absolute; z-index: -1; bottom: 50px; left: 8%; right: 8%; height: 26px; border-radius: 50%; background: #315e4240; filter: blur(6px); }
+.lobby-cast figure:nth-child(2) { margin-bottom: 28px; }
+.lobby-cast img { display: block; width: 100%; height: clamp(190px, 36vh, 360px); object-fit: contain; object-position: center bottom; filter: drop-shadow(0 12px 8px #355f4230); }
+.lobby-cast figure:nth-child(3) img { width: 92%; margin-inline: auto; }
+.lobby-cast figcaption { display: inline-block; font-family: var(--font-game); font-size: 23px; line-height: 1.3; color: #38573e; margin-top: 15px; padding: 9px 18px; border: 1px solid #bfaa70; border-radius: 12px; background: #f9f0d5; box-shadow: 0 3px 0 #a58e56; white-space: nowrap; }
+@media (max-height: 650px) {
+  .lobby { gap: 14px; padding: 12px 36px 36px; }
+  .lobby-cast { min-height: 280px; padding-bottom: 16px; }
+  .lobby-cast img { height: 200px; }
+  .lobby-cast figure:nth-child(2) { margin-bottom: 16px; }
+  .lobby-cast figcaption { font-size: 20px; padding: 7px 14px; margin-top: 10px; }
+  .lobby-actions button { min-height: 54px; padding-block: 13px; }
+  .lobby::after { bottom: 12px; font-size: 15px; }
+}

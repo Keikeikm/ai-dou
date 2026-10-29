@@ -1,0 +1,67 @@
+.room-drawer.wide { width: min(1000px, 100%); }
+.replay-analysis { color: #304c3e; }
+.analysis-intro h3 { font-family: var(--font-game); font-size: 26px; font-weight: 400; line-height: 1.3; margin: 10px 0 6px; }
+.analysis-intro p, .analysis-note, .analysis-recommendation { color: #61715a; font-size: 12px; }
+.analysis-badge { display: inline-block; color: #f7f3e8; background: #395b47; padding: 5px 10px; border-radius: 6px; font-weight: 700; letter-spacing: .04em; }
+.analysis-filters { display: flex; flex-wrap: wrap; gap: 12px; padding: 18px 0; }
+.analysis-filters label, .analysis-chart-heading label { display: flex; flex-direction: column; gap: 7px; }
+.analysis-filters select { min-width: 170px; }
+.analysis-filters input { width: 105px; }
+.analysis-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.analysis-stats > div { display: flex; flex-direction: column; gap: 9px; padding: 16px; border: 1px solid #d6dac4; border-radius: 10px; background: #eef0e3; }
+.analysis-stats small { font-size: 12px; color: #61715a; }
+.analysis-stats strong { font-size: 21px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.analysis-chart-heading, .analysis-export { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 22px; }
+.analysis-chart-heading h3 { margin: 0; font-size: 17px; }
+.analysis-plot { background: #fffef8; border: 1px solid #d6dac4; border-radius: 12px; padding: 16px; margin-top: 12px; }
+.analysis-legend { display: flex; flex-wrap: wrap; gap: 12px 22px; font-size: 12px; }
+.analysis-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.analysis-legend i { width: 9px; height: 9px; border-radius: 50%; }
+.analysis-plot svg { display: block; width: 100%; min-height: 180px; overflow: visible; }
+.analysis-plot text { fill: #61715a; font-family: var(--font-body); font-size: 12px; }
+.analysis-plot [role=button] { cursor: pointer; }
+.analysis-plot [role=button]:hover, .analysis-plot [role=button]:focus { stroke: #183d2a; stroke-width: 3px; outline: none; }
+.analysis-point-detail { min-height: 36px; margin: 0; font-size: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.analysis-point-detail small { flex-basis: 100%; }
+.analysis-insights { margin-top: 20px; padding: 16px 20px; background: #e9eddd; border: 1px solid #d6dac4; border-radius: 10px; }
+.analysis-insights h3 { margin-top: 0; }
+.analysis-insights ul { padding-left: 20px; line-height: 1.8; }
+.analysis-insights li { margin-bottom: 10px; }
+.analysis-insights button { margin-left: 10px; font-size: 12px; }
+.analysis-empty { border: 1px dashed #b9c5ac; border-radius: 12px; padding: 35px; line-height: 1.8; background: #fffef8; }
+.analysis-data summary { cursor: pointer; padding: 12px 0; font-weight: 600; }
+.analysis-table-scroll { overflow: auto; max-height: 420px; }
+.analysis-data table { border-collapse: collapse; width: 100%; white-space: nowrap; background: #fffef8; font-size: 12px; }
+.analysis-data caption { text-align: left; padding: 10px; }
+.analysis-data th { text-align: left; background: #e9eddd; position: sticky; top: 0; }
+.analysis-data td, .analysis-data th { padding: 10px; border-bottom: 1px solid #d6dac4; }
+.analysis-data button { font-size: 12px; }
+.analysis-credit { font-size: 12px; color: #61715a; padding-top: 16px; }
+@media (max-width: 1000px) { .analysis-stats strong { font-size: 17px; } }
+.analysis-chat { margin: 18px 0 22px; padding: 24px; border: 2px solid #557651; border-radius: 16px; background: linear-gradient(135deg, #fffef8, #eef3e4); box-shadow: 0 6px 22px #395b4714; }
+.analysis-data { border-bottom: 1px solid #d6dac4; }
+.analysis-reply-chart { margin: 16px 0; }
+.analysis-reply-chart h4 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 0; }
+.analysis-reply-chart h4 small { font-weight: 400; }
+.analysis-reply-chart .analysis-plot { padding: 12px; }
+.analysis-chat-heading { display: flex; align-items: center; justify-content: space-between; }
+.analysis-chat-heading h3 { margin: 0; }
+.analysis-chat-heading span, .analysis-chat small { color: #61715a; font-size: 12px; }
+.analysis-conversation { max-height: 520px; overflow: auto; overscroll-behavior: contain; }
+.analysis-exchange { padding: 15px 0; border-top: 1px solid #dce2d3; }
+.analysis-question, .analysis-answer { padding: 12px; border-radius: 8px; margin-bottom: 8px; }
+.analysis-question { background: #eef0e3; }
+.analysis-answer { background: #f7f3e8; margin-top: 10px; }
+.analysis-chat .analysis-question p, .analysis-chat .analysis-answer p { margin: 6px 0; white-space: pre-wrap; }
+.analysis-answer-actions, .analysis-suggestions, .analysis-chat-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.analysis-answer-actions { margin: 12px 0; }
+.analysis-suggestions { margin: 16px 0; }
+.analysis-suggestions button { font-size: 12px; padding: 7px; border-color: #dce2d3; }
+.analysis-chat textarea { display: block; width: 100%; resize: vertical; min-height: 80px; padding: 12px; margin: 8px 0; border: 1px solid #b6c2a9; border-radius: 8px; background: #fffaf0; color: var(--room-ink); font: inherit; }
+.analysis-chat textarea:focus-visible { outline: 3px solid #557651; outline-offset: 2px; }
+.analysis-chat-controls { justify-content: flex-end; }
+.analysis-chat-controls small { margin-right: auto; }
+.analysis-chat-error { color: #89541e; }
+.analysis-chat-heading h3 { font-family: var(--font-game); font-size: 29px; font-weight: 400; }
+.analysis-stats strong, .history-sequence, .result-player > span, .decision-clock, .table-hud b, .count { font-family: var(--font-number); font-weight: 700; font-variant-numeric: tabular-nums; }
+.model-response-panel pre { font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 12px; line-height: 1.65; }
