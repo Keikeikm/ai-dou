@@ -1,0 +1,26 @@
+client/public/avatars/README.md
+  s_4c49dfdd236779::t_6a9d25e6abf3d2 1-11
+README.md
+  s_4c49dfdd236779::t_6a9d25e6abf3d2 9-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "8425ba0b2e69b8fd1cd36c53c4f96934053f11bc",
+  "prompts": {},
+  "humans": {
+    "h_387adc9553c490": {
+      "author": "kk <keikeiikm@163.com>"
+    }
+  },
+  "sessions": {
+    "s_4c49dfdd236779": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1889d-5408-7ae3-b349-7651d29dd0ec",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kk <keikeiikm@163.com>"
+    }
+  }
+}
