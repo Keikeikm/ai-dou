@@ -8,6 +8,7 @@ import { ReplayChatService, type ReplayChatOptions } from '../analysis/replay-ch
 
 const webRoot = resolve(process.cwd(), 'client/public');
 const assets = new Map([
+  ['/chart-runtime/gpt-vis.js', ['../../node_modules/@antv/gpt-vis/dist/umd/index.min.js', 'text/javascript']],
   ['/agent-api', ['../../docs/AGENT_API.md', 'text/plain']],
   ['/scoring', ['../../docs/SCORING.md', 'text/plain']],
   ['/spectating', ['../../docs/SPECTATING.md', 'text/plain']],

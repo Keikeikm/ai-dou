@@ -29,9 +29,21 @@ describe('replay conversation controls', () => {
       expect(chart.querySelectorAll('polyline')).toHaveLength(1);
       expect(chart.querySelectorAll('[role="button"]')).toHaveLength(3);
       expect(showChart).not.toHaveBeenCalled();
+      const text = screen.getByText(chartReply.answer);
+      const fetchCalls = vi.mocked(fetch).mock.calls.length;
+      const collapse = screen.getByRole('button', { name: '折叠文字' });
+      expect(collapse.getAttribute('aria-expanded')).toBe('true');
+      expect(collapse.getAttribute('aria-controls')).toBe(text.id);
+      fireEvent.click(collapse);
+      expect(text.hidden).toBe(true);
+      expect(screen.getByRole('button', { name: '展开文字' }).getAttribute('aria-expanded')).toBe('false');
+      expect(within(region).getByRole('img', { name: /分析图/ })).toBe(chart);
       fireEvent.click(chart.querySelector('[role="button"]')!);
       fireEvent.click(within(region).getByRole('button', { name: '回看第 2 步' }));
       expect(seek).toHaveBeenCalledWith(2);
+      fireEvent.click(screen.getByRole('button', { name: '展开文字' }));
+      expect(text.hidden).toBe(false);
+      expect(vi.mocked(fetch).mock.calls).toHaveLength(fetchCalls);
       view.rerender(<AnalysisChat {...props} scope={{ ...scope, from: 0, to: 10 }} />);
       expect(chart.querySelectorAll('[role="button"]')).toHaveLength(3);
     } finally { game.dispose(); }
@@ -55,10 +67,13 @@ describe('replay conversation controls', () => {
     expect(requests[1].body.scope).toEqual(scope); expect(requests[1].body.history).toEqual([]);
     fireEvent.click(screen.getByRole('button', { name: '回看第 2 步' })); expect(seek).toHaveBeenCalledWith(2);
     fireEvent.click(screen.getByRole('button', { name: '查看建议图表 · 动作分布' })); expect(showChart).toHaveBeenCalledWith(reply.chart, scope);
+    fireEvent.click(screen.getByRole('button', { name: '折叠文字' }));
     fireEvent.change(screen.getByLabelText('复盘问题'), { target: { value: '继续解释' } });
     fireEvent.click(screen.getByRole('button', { name: '发送提问' }));
     await waitFor(() => expect(requests).toHaveLength(3));
     expect(requests[2].body.history).toEqual([{ role: 'user', content: '解释出牌分布' }, { role: 'assistant', content: reply.answer }]);
+    await screen.findByRole('button', { name: '折叠文字' });
+    expect(screen.getByRole('button', { name: '展开文字' }).getAttribute('aria-expanded')).toBe('false');
   });
 
   it('cancels a pending request, prevents repeated sends, and keeps failed questions editable', async () => {
