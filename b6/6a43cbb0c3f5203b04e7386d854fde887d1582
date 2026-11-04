@@ -1,0 +1,91 @@
+client/hooks/useAvaAnalysis.ts
+  s_b6fa0131d155c0::t_4e63a4c15b2bbf 1-21
+tests/analysis-chat.test.ts
+  s_b6fa0131d155c0::t_54692063de5dd6 5,9-11,28,30,39,43,50,70,72,79,87,93,110,117
+  s_b6fa0131d155c0::t_87fd2d27b660c7 102
+  s_b6fa0131d155c0::t_c75f79572b3ba4 41
+tests/client/analysis-chat.test.tsx
+  s_b6fa0131d155c0::t_bc90db2566410f 32-40,44-46,70,75-76
+package.json
+  s_b6fa0131d155c0::t_e028f243f0a56b 32
+  s_b6fa0131d155c0::t_d86b3bde4d90ef 31
+tests/ava-charts.test.ts
+  s_b6fa0131d155c0::t_410f246c7f0cef 1-81
+shared/ava-charts.ts
+  s_b6fa0131d155c0::t_922049f806d312 40,49-50,73,81,99,106,108,114,132
+  s_b6fa0131d155c0::t_a2e75c58577683 1-11,13-29,31-39,41-48,51-72,74-80,82-98,100-105,107,109-113,115-131,133-145,147-153
+  s_b6fa0131d155c0::t_93eb1c842c8103 146
+  s_b6fa0131d155c0::t_71cacce1413f6b 12
+  s_b6fa0131d155c0::t_914feeb0caba28 30
+shared/replay-patterns.ts
+  s_b6fa0131d155c0::t_4e63a4c15b2bbf 1-58
+server/analysis/ava-visualization.ts
+  s_b6fa0131d155c0::t_914feeb0caba28 41-45
+  s_b6fa0131d155c0::t_71cacce1413f6b 1-12,14-40,46-51
+  s_b6fa0131d155c0::t_2811be7bf5266a 13
+shared/ava-analysis.ts
+  s_b6fa0131d155c0::t_742f809e42e47f 29,32,42
+  s_b6fa0131d155c0::t_2811be7bf5266a 25-26,31
+  s_b6fa0131d155c0::t_651b5853f96f13 1-2,8,14-21,24,27-28,33-38,40,43-44
+  s_b6fa0131d155c0::t_6bf8f30fbedb2d 41
+client/components/ReplayAnalysis.tsx
+  s_b6fa0131d155c0::t_87fd2d27b660c7 4-5,25,34,63,68
+  s_b6fa0131d155c0::t_914feeb0caba28 8-9,18-20,38-39,57-62,64-65,82
+server/analysis/replay-chat.ts
+  s_b6fa0131d155c0::t_87fd2d27b660c7 46,52-59,76-77
+  s_b6fa0131d155c0::t_54692063de5dd6 128-158,160-177,183-193
+  s_b6fa0131d155c0::t_71cacce1413f6b 7-8,13,16,23
+  s_b6fa0131d155c0::t_fd3ba54d352291 89-91,100,110,159
+  s_b6fa0131d155c0::t_922049f806d312 114-127,194,206-207
+  s_b6fa0131d155c0::t_d417fc07afeedb 178-182
+tests/client/replay-analysis.test.tsx
+  s_b6fa0131d155c0::t_87fd2d27b660c7 55,58,63,65,69
+tests/client/ava-analysis-hook.test.tsx
+  s_b6fa0131d155c0::t_c3f64cbdd20930 1-26
+shared/replay-chat.ts
+  s_b6fa0131d155c0::t_71cacce1413f6b 16-18
+client/components/AvaChart.tsx
+  s_b6fa0131d155c0::t_d417fc07afeedb 24-29
+  s_b6fa0131d155c0::t_914feeb0caba28 1,3-12
+  s_b6fa0131d155c0::t_a29e623acf5e94 2,13-23,30-48
+server/http/replay-server.ts
+  s_b6fa0131d155c0::t_a29e623acf5e94 11
+tests/ava-analysis.test.ts
+  s_b6fa0131d155c0::t_c3f64cbdd20930 1-44
+client/styles/analysis.css
+  s_b6fa0131d155c0::t_bc90db2566410f 58-59
+  s_b6fa0131d155c0::t_a29e623acf5e94 47-49
+client/components/AnalysisReplyChart.tsx
+  s_b6fa0131d155c0::t_a29e623acf5e94 6-7,9,11,13,15,17-18
+  s_b6fa0131d155c0::t_87fd2d27b660c7 4
+README.md
+  s_b6fa0131d155c0::t_d417fc07afeedb 6-11
+  s_b6fa0131d155c0::t_2811be7bf5266a 5
+  s_b6fa0131d155c0::t_87fd2d27b660c7 3-4
+client/components/AnalysisChat.tsx
+  s_b6fa0131d155c0::t_a29e623acf5e94 73,80,88
+  s_b6fa0131d155c0::t_bc90db2566410f 1,8-21,79
+tests/client/ava-chart.test.tsx
+  s_b6fa0131d155c0::t_410f246c7f0cef 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "b66a43cbb0c3f5203b04e7386d854fde887d1582",
+  "prompts": {},
+  "humans": {
+    "h_387adc9553c490": {
+      "author": "kk <keikeiikm@163.com>"
+    }
+  },
+  "sessions": {
+    "s_b6fa0131d155c0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ab2-0ef9-7de1-a256-68931f713269",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kk <keikeiikm@163.com>"
+    }
+  }
+}
