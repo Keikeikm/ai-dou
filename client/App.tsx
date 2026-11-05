@@ -12,8 +12,10 @@ import { Settlement } from './components/Settlement.js';
 import { ReplayTools, WatchControls } from './components/WatchControls.js';
 import { GameIcon } from './components/GameIcon.js';
 import { useHumanPlay } from './hooks/useHumanPlay.js';
+import { BluffGame } from './components/BluffGame.js';
 
 const ReplayAnalysis = lazy(() => import('./components/ReplayAnalysis.js'));
+const AnalyticsPage = lazy(() => import('./components/AnalyticsPage.js'));
 class AnalysisBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
@@ -22,7 +24,18 @@ class AnalysisBoundary extends Component<{ children: ReactNode }, { failed: bool
 type Panel = 'settings' | 'history' | 'response' | 'replay' | 'analysis' | null;
 const panelTitles = { settings: '房间设置', history: '出牌记录', response: '模型返回', replay: '回放与日志', analysis: '复盘分析' };
 
-export function App({ route = parseRoute(window.location.pathname), navigate = (path: string) => window.location.assign(path) }: { route?: Route; navigate?: (path: string) => void }) {
+type AppRoute = Route | { kind: 'bluff'; id?: string } | { kind: 'analytics' };
+function appRoute(path: string): AppRoute {
+  if (/^\/analytics\/?$/.test(path)) return { kind: 'analytics' };
+  const bluff = path.match(/^\/bluff(?:\/(bluff_[a-f0-9]{12}))?\/?$/);
+  return bluff ? { kind: 'bluff', ...(bluff[1] ? { id: bluff[1] } : {}) } : parseRoute(path);
+}
+export function App({ route = appRoute(window.location.pathname), navigate = (path: string) => window.location.assign(path) }: { route?: AppRoute; navigate?: (path: string) => void }) {
+  if (route.kind === 'analytics') return <AnalysisBoundary><Suspense fallback={<p className="room-loading" role="status">正在加载数据中心与 AVA…</p>}><AnalyticsPage /></Suspense></AnalysisBoundary>;
+  return route.kind === 'bluff' ? <BluffGame {...(route.id ? { id: route.id } : {})} navigate={navigate} /> : <DoudizhuApp route={route} navigate={navigate} />;
+}
+
+function DoudizhuApp({ route, navigate }: { route: Route; navigate: (path: string) => void }) {
   const watch = useWatchRoom(route);
   const stage = useDealAnimation(watch.replay, watch.followLive);
   const human = useHumanPlay(watch, route, stage);
@@ -44,6 +57,7 @@ export function App({ route = parseRoute(window.location.pathname), navigate = (
       {!archived && <button className="quiet header-settings" onClick={settings}><GameIcon name="settings" />设置</button>}</header>
     {route.kind === 'home' ? <Lobby navigate={navigate} /> : <>
       {watch.error && <div className="load-error" role="alert"><strong>操作或加载失败</strong><p>{watch.error}</p><button onClick={watch.reload}>重新加载</button><a href="/">返回首页</a></div>}
+      {replay?.room.dataError && <div className="load-error" role="alert">{replay.room.dataError}</div>}
       {watch.loading && !replay && <div className="room-loading" role="status">正在连接棋牌室…</div>}
       {replay && <><Table key={replay.room.id + ':' + replay.generation} replay={replay} snapshot={snapshot} index={watch.index} followLive={watch.followLive}
         dealStage={stage} connected={watch.connected && !archived} inspect={inspect} settings={settings} human={human}>

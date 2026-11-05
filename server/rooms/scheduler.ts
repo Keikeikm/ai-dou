@@ -53,6 +53,8 @@ export interface DecisionProgress {
 }
 
 export interface TurnRecord {
+  readonly at?: number;
+  readonly durationMs?: number;
   readonly sequence: number;
   readonly seat: number;
   readonly phase: GamePhase;
@@ -326,6 +328,7 @@ export class GameScheduler {
     const seat = before.currentSeat;
     const normalized = action.type === 'play' ? { type: 'play' as const, cards: this.state.lastPlay!.combination.cards } : action;
     this.turns.push(structuredClone({ sequence: this.turns.length + 1, seat, phase: before.phase, action: normalized, source, decisionKind: this.agents[seat].kind, reason, detail,
+      at: Date.now(), durationMs: this.decision ? Math.max(0, Date.now() - this.decision.startedAt) : 0,
       ...(modelResponse ? { modelResponse } : {}) }));
     this.snapshots.push(captureSnapshot(this.state, this.agents.map((agent) => agent.name), this.baseScore));
     this.decision = undefined;
