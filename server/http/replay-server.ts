@@ -5,10 +5,13 @@ import { resolve } from 'node:path';
 import { RoomError, RoomManager, type RoomManagerOptions } from '../rooms/room-manager.js';
 import { replayJournal } from '../rooms/scheduler.js';
 import { ReplayChatService, type ReplayChatOptions } from '../analysis/replay-chat.js';
+import { BluffRooms } from '../bluff/rooms.js';
+import { DataStore } from '../data/store.js';
+import { handleDataRequest } from '../data/http.js';
 
 const webRoot = resolve(process.cwd(), 'client/public');
 const assets = new Map([
-  ['/chart-runtime/gpt-vis.js', ['../../node_modules/@antv/gpt-vis/dist/umd/index.min.js', 'text/javascript']],
+  ['/data-guide', ['../../docs/DATA.md', 'text/plain']],
   ['/agent-api', ['../../docs/AGENT_API.md', 'text/plain']],
   ['/scoring', ['../../docs/SCORING.md', 'text/plain']],
   ['/spectating', ['../../docs/SPECTATING.md', 'text/plain']],
@@ -78,7 +81,10 @@ export interface ReplayServerOptions extends RoomManagerOptions {
 }
 
 export function createReplayServer(options: ReplayServerOptions = {}): Server {
-  const manager = new RoomManager(options);
+  const data = options.dataStore ?? new DataStore(options.scoreDatabasePath);
+  const manager = new RoomManager({ ...options, dataStore: data });
+  data.importExisting();
+  const bluff = new BluffRooms(options.deepseek, options.deepseekTurnTimeoutMs, data);
   const analysis = new ReplayChatService({ apiKey: options.deepseek?.apiKey, model: options.deepseek?.model, ...options.replayAnalysis });
 
   const server = createServer(async (request, response) => {
@@ -87,8 +93,23 @@ export function createReplayServer(options: ReplayServerOptions = {}): Server {
     try {
       const url = new URL(request.url ?? '/', 'http://localhost');
       const pathname = url.pathname;
+      if (await handleDataRequest(data, url, request, response, readBody)) return;
       const head = request.method === 'HEAD';
       const read = request.method === 'GET' || head;
+      if (pathname === '/api/bluff/rooms') {
+        if (request.method !== 'POST') throw new RoomError(405, 'Method not allowed');
+        sendJson(response, 201, bluff.create(await readBody(request)));
+        return;
+      }
+      const bluffRoom = pathname.match(/^\/api\/bluff\/rooms\/(bluff_[a-f0-9]{12})$/);
+      if (bluffRoom) {
+        const token = request.headers.authorization?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
+        if (read) sendJson(response, 200, bluff.get(bluffRoom[1], token), head);
+        else if (request.method === 'POST') sendJson(response, 200, bluff.control(bluffRoom[1], token, await readBody(request)));
+        else if (request.method === 'DELETE') { await readBody(request); bluff.close(bluffRoom[1], token); sendJson(response, 200, { closed: true }); }
+        else throw new RoomError(405, 'Method not allowed');
+        return;
+      }
       if (pathname === '/api/config') {
         if (!read) { response.setHeader('Allow', 'GET, HEAD'); throw new RoomError(405, 'Method not allowed'); }
         sendJson(response, 200, { baseScore: options.baseScore ?? 1, capabilities: { randomDeals: true, modelResponses: true, humanPlayers: true } }, head);
@@ -229,7 +250,7 @@ export function createReplayServer(options: ReplayServerOptions = {}): Server {
         options.frontendMiddleware(request, response, () => sendJson(response, 404, { error: 'Not found' }, head));
         return;
       }
-      const page = pathname === '/' || pathname === '/index.html' || roomPage || gamePage;
+      const page = pathname === '/' || pathname === '/index.html' || pathname === '/analytics' || pathname === '/analytics/' || /^\/bluff(?:\/bluff_[a-f0-9]{12})?\/?$/.test(pathname) || roomPage || gamePage;
       const bundledAsset = pathname.match(/^\/assets\/([a-zA-Z0-9_.-]+\.(js|css|woff2|woff))$/);
       if (!page && !bundledAsset) throw new RoomError(404, 'Not found');
       const builtIndex = resolve(process.cwd(), 'dist/client/index.html');
@@ -247,8 +268,9 @@ export function createReplayServer(options: ReplayServerOptions = {}): Server {
     }
   });
   const close = server.close.bind(server);
-  server.close = (callback) => { analysis.dispose(); manager.dispose(); return close(callback); };
-  server.on('close', () => { analysis.dispose(); manager.dispose(); });
+  const dispose = () => { bluff.dispose(); analysis.dispose(); manager.dispose(); if (!options.dataStore) data.close(); };
+  server.close = (callback) => { dispose(); return close(callback); };
+  server.on('close', dispose);
   return server;
 }
 

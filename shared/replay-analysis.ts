@@ -15,6 +15,7 @@ export interface AnalysisPoint { x: string | number; y: number; series: string; 
 export interface AnalysisDataset {
   metric: AnalysisMetric; points: AnalysisPoint[]; xLabel: string; yLabel: string; categorical: boolean;
   observations: number; missing: number;
+  measureLabel?: string; orderedTrend?: boolean;
 }
 
 const nonNegative = (value?: number): number | null => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;

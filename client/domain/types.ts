@@ -21,6 +21,7 @@ export interface Player {
 }
 
 export interface Room {
+  dataError?: string | null;
   id: string;
   name: string;
   status: RoomStatus;

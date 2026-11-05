@@ -26,7 +26,7 @@ export const roomControl = (id: string, action: string, signal?: AbortSignal) =>
 export async function createRoom(players: AgentRegistration[], baseScore: number) {
   const config = await configuration();
   if (players.some((player) => player.kind === 'human') && !config.capabilities?.humanPlayers) throw new Error('旧版后端不支持真人对战，请重启 npm run ui');
-  const room = await requestJson<Room & { humanControl?: HumanControlGrant }>('/api/rooms', { method: 'POST', body: JSON.stringify({ players, baseScore }) });
+  const room = await requestJson<Room & { humanControl?: HumanControlGrant }>('/api/rooms', { method: 'POST', body: JSON.stringify({ players, baseScore, ...profileParameter() }) });
   if (room.humanControl) saveHumanControl(room.id, room.humanControl);
   return room;
 }
@@ -44,3 +44,4 @@ export const roomGames = (id: string) => requestJson<{ games: GameSummary[] }>('
 export const analysisConfiguration = (signal?: AbortSignal) => requestJson<AnalysisChatConfig>('/api/analysis/config', { signal });
 export const askReplayAnalysis = (kind: 'room' | 'archive', id: string, question: AnalysisChatRequest, signal?: AbortSignal) =>
   requestJson<AnalysisChatReply>('/api/' + (kind === 'archive' ? 'games' : 'rooms') + '/' + id + '/analysis', { method: 'POST', body: JSON.stringify(question), signal });
+import { profileParameter } from './player-profile.js';

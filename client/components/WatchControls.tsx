@@ -31,7 +31,7 @@ export function WatchControls({ watch, route, dealStage, open, human }: { watch:
       {!archived && <button className="new-game" disabled={!canOperate || !snapshot} onClick={() => void watch.control('new-game')}><GameIcon name="cards" />随机新局</button>}
       <button className="quiet" onClick={() => open('history')}><GameIcon name="history" />出牌记录</button><button className="quiet" onClick={() => open('response')}><GameIcon name="response" />模型返回</button>
       <button className="quiet" onClick={() => open('replay')}><GameIcon name="replay" />回放与日志</button>
-      <button className="quiet" onClick={() => open('analysis')}><GameIcon name="history" />复盘分析</button>
+      {archived && <button className="quiet" onClick={() => open('analysis')}><GameIcon name="history" />复盘分析</button>}
     </div></div>
   </footer>;
 }

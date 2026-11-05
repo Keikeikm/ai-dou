@@ -7,6 +7,8 @@ import { validateBaseScore } from '../game/scoring.js';
 import { DEEPSEEK_API_URL, DeepSeekDecisionAgent, checkDeepSeekConnection, validateDeepSeekModel, type DeepSeekOptions } from '../agents/deepseek.js';
 import { defaultSkillForSeat, validateSkillId, type SkillId } from '../../shared/strategy-skills.js';
 import type { HumanControlGrant, HumanSubmission } from '../../shared/human-player.js';
+import { dataPlayers, type DataStore } from '../data/store.js';
+import type { PlayerProfile, EpisodeStatus } from '../../shared/game-data.js';
 
 export type RoomStatus = 'waiting' | 'ready' | 'playing' | 'finished' | 'closed';
 export type AgentKind = 'random' | 'greedy' | 'http' | 'deepseek' | 'human';
@@ -33,6 +35,7 @@ export interface RoomPlayer {
 }
 
 export interface CreateRoomOptions {
+  readonly profileId?: string;
   readonly seed?: number;
   readonly name?: string;
   readonly players?: readonly AgentRegistration[];
@@ -40,6 +43,7 @@ export interface CreateRoomOptions {
 }
 
 export interface RoomManagerOptions extends Omit<SchedulerOptions, 'seed'> {
+  readonly dataStore?: DataStore;
   readonly maxRooms?: number;
   readonly idleTimeoutMs?: number;
   readonly closedRetentionMs?: number;
@@ -58,6 +62,9 @@ export class RoomError extends Error {
 }
 
 interface RoomRecord {
+  profile: PlayerProfile;
+  dataStartedAt: number;
+  dataError?: string | undefined;
   readonly id: string;
   readonly name: string;
   seed: number;
@@ -171,7 +178,10 @@ export class RoomManager {
     let id: string;
     do { id = 'room_' + randomUUID().replaceAll('-', '').slice(0, 12); } while (this.rooms.has(id));
     const createdAt = this.now();
-    const room: RoomRecord = { id, name, seed, baseScore, createdAt, updatedAt: createdAt, players: [], credentials: new Map(), listeners: new Set(), generation: 1, revision: 0, started: false };
+    let profile: PlayerProfile;
+    try { profile = this.options.dataStore?.profile(input.profileId) ?? { id: 'human_local', name: '我', createdAt }; }
+    catch (error) { throw new RoomError(400, (error as Error).message); }
+    const room: RoomRecord = { id, name, seed, baseScore, createdAt, dataStartedAt: createdAt, profile, updatedAt: createdAt, players: [], credentials: new Map(), listeners: new Set(), generation: 1, revision: 0, started: false };
     this.rooms.set(id, room);
     try { for (const player of input.players ?? []) this.join(id, player); }
     catch (error) { this.close(id, 'creation-failed'); this.rooms.delete(id); throw error; }
@@ -189,6 +199,7 @@ export class RoomManager {
         } : {}) })), spectators: room.listeners.size,
       createdAt: room.createdAt, updatedAt: room.updatedAt, closedAt: room.closedAt, closeReason: room.closeReason,
       generation: room.generation, viewUrl: '/rooms/' + id,
+      dataError: room.dataError ?? null,
     });
   }
 
@@ -290,6 +301,7 @@ export class RoomManager {
     const playerIndex = room.players.findIndex((player) => player.id === playerId);
     if (playerIndex < 0) throw new RoomError(404, 'Agent not found');
     if (this.status(room) === 'playing' || this.status(room) === 'finished') return this.close(id, 'agent-left');
+    this.archiveData(room, 'abandoned', true);
     room.checkController?.abort();
     room.unsubscribe?.();
     room.scheduler?.stop();
@@ -324,6 +336,7 @@ export class RoomManager {
     else if (action === 'pause') room.scheduler.pause();
     else if (action === 'step') await room.scheduler.step();
     else if (action === 'reset' || action === 'new-game') {
+      this.archiveData(room, 'abandoned', true);
       if (room.scheduler.getSession().status === 'finished') {
         this.settleRoom(room, true);
         if (room.accounting?.status !== 'recorded') throw new RoomError(503, 'Record the settlement before resetting');
@@ -332,6 +345,7 @@ export class RoomManager {
       this.createGame(room, room.generation + 1, randomSeed(room.seed));
       previous.stop();
       room.generation += 1;
+      room.dataStartedAt = this.now();
       this.publish(room);
     } else throw new RoomError(400, 'Unknown control action');
     return this.getReplay(id);
@@ -350,6 +364,7 @@ export class RoomManager {
   close(id: string, reason = 'manual') {
     const room = this.requireRoom(id);
     if (room.closedAt !== undefined) return this.get(id);
+    this.archiveData(room, reason === 'server-shutdown' ? 'interrupted' : 'abandoned', reason !== 'server-shutdown');
     room.closedAt = this.now();
     room.closeReason = reason;
     room.checkController?.abort();
@@ -370,7 +385,7 @@ export class RoomManager {
       if (room.closedAt !== undefined) {
         if (room.accounting?.status !== 'error' && now - room.closedAt >= this.closedRetentionMs) this.rooms.delete(room.id);
       } else if (room.listeners.size === 0 && now - room.updatedAt >= this.idleTimeoutMs) {
-        this.close(room.id, 'expired');
+        try { this.close(room.id, 'expired'); } catch { /* Keep the journal in memory and retry on the next sweep if persistence fails. */ }
       }
     }
   }
@@ -437,6 +452,7 @@ export class RoomManager {
 
   private publish(room: RoomRecord): void {
     this.settleRoom(room);
+    if (room.closedAt === undefined) this.archiveData(room, 'active');
     room.updatedAt = this.now();
     room.revision += 1;
     for (const listener of room.listeners) {
@@ -451,5 +467,21 @@ export class RoomManager {
       const record = this.scoreStore.record(room.id, room.generation, room.players, room.scheduler.getJournal(), this.now());
       room.accounting = { status: 'recorded', gameId, entries: record.entries };
     } catch { room.accounting = { status: 'error', gameId, entries: [] }; }
+  }
+
+  private archiveData(room: RoomRecord, status: EpisodeStatus, required = false): void {
+    if (!this.options.dataStore || !room.scheduler) return;
+    const journal = room.scheduler.getJournal();
+    if (!journal.turns.length) return;
+    try {
+      this.options.dataStore.save({ id: gameIdFor(room.id, room.generation), roomId: room.id, generation: room.generation,
+        startedAt: room.dataStartedAt, status: journal.status === 'finished' ? 'finished' : status,
+        players: dataPlayers(room.players, room.profile, this.deepseek.model ?? 'deepseek-flash'), raw: { game: 'doudizhu', journal } });
+      room.dataError = undefined;
+    } catch {
+      room.dataError = '牌局数据暂未保存，请检查磁盘后重试；请勿关闭服务。';
+      if (required) throw new RoomError(503, room.dataError);
+      if (room.scheduler.getSession().status === 'running') room.scheduler.pause();
+    }
   }
 }

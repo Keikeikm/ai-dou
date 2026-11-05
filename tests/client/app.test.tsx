@@ -56,7 +56,7 @@ describe('React spectator application', () => {
     expect([...hands].map((hand) => hand.querySelectorAll('.card').length)).toEqual([17, 17, 17]);
     expect([...hands].map((hand) => hand.querySelectorAll('.card:not(.back)').length)).toEqual([17, 17, 17]);
     expect(document.querySelectorAll('.hand-area .back.joker, .hand-area .back.red')).toHaveLength(0);
-    expect(screen.getByText('下一行动方')).toBeTruthy();
+    expect(screen.getByText('轮到GPT大人叫分')).toBeTruthy();
     expect(game.calls()).toBe(0);
   });
 
