@@ -52,21 +52,21 @@ describe('AVA replay analytics', () => {
     expect(rows[3].cache).toBeNull();
   });
 
-  it('runs the real AVA data, advisor and insight modules without a model call', () => {
+  it('runs real AVA V4 profiling and local chart/pattern rules without a model call', async () => {
     const dataset: AnalysisDataset = { metric: 'duration', categorical: false, xLabel: '步骤', yLabel: 'ms', observations: 8, missing: 0,
       points: [10, 11, 12, 10, 11, 12, 10, 1000].map((y, i) => ({ x: i + 1, y, series: '玩家', steps: [i + 1] })) };
-    const result = runAvaAnalysis(dataset);
+    const result = await runAvaAnalysis(dataset);
     expect(result.errors).toEqual([]);
     expect(result.stats).toEqual({ mean: 134.5, min: 10, max: 1000 });
     expect(result.recommendations.some((advice) => advice.type === 'scatter_plot')).toBe(true);
     expect(result.insights.some((insight) => insight.text.includes('离群值') && insight.steps[0] === 8)).toBe(true);
-    const hands = runAvaAnalysis({ ...dataset, metric: 'hands', points: [8, 7, 6, 5, 4, 3, 2, 1].map((y, i) => ({ x: i, y, series: '玩家', steps: [i] })) });
+    const hands = await runAvaAnalysis({ ...dataset, metric: 'hands', points: [8, 7, 6, 5, 4, 3, 2, 1].map((y, i) => ({ x: i, y, series: '玩家', steps: [i] })) });
     expect(hands.insights.some((insight) => insight.text.includes('显著下降'))).toBe(true);
-    const categories = runAvaAnalysis({ ...dataset, metric: 'actions', categorical: true,
+    const categories = await runAvaAnalysis({ ...dataset, metric: 'actions', categorical: true,
       points: ['叫分', '出牌', '不出'].map((x, i) => ({ x, y: [1, 12, 3][i], series: '玩家', steps: [i + 1] })) });
     expect(categories.errors).toEqual([]);
     expect(categories.recommendations.some((advice) => advice.type === 'column_chart')).toBe(true);
-    expect(runAvaAnalysis({ ...dataset, points: [] }).stats).toBeNull();
+    expect((await runAvaAnalysis({ ...dataset, points: [] })).stats).toBeNull();
   });
 
   it('exports safe quoted CSV with empty missing fields and filtered data', async () => {

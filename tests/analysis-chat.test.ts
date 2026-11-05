@@ -2,10 +2,13 @@ import { once } from 'node:events';
 import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RoomManager } from '../server/rooms/room-manager.js';
-import { ReplayChatService, buildAnalysisContext, type AnalysisCompletionRequest } from '../server/analysis/replay-chat.js';
+import { ReplayChatService, buildAnalysisContext, type AnalysisCompletionRequest, type ReplayChatOptions } from '../server/analysis/replay-chat.js';
 import { createReplayServer } from '../server/http/replay-server.js';
 import { AgentHttpError } from '../server/agents/http.js';
 
+class ConversationService extends ReplayChatService {
+  constructor(options: ReplayChatOptions = {}) { super({ visualize: async () => null, ...options }); }
+}
 const managers: RoomManager[] = [];
 afterEach(() => { for (const manager of managers.splice(0)) manager.dispose(); });
 async function game() {
@@ -22,9 +25,9 @@ describe('grounded replay conversation', () => {
   it('turns a natural-language chart request into a chart even when the model omits it', async () => {
     const { room, replay } = await game();
     const transport = vi.fn(async (_credentials, _request: AnalysisCompletionRequest) => ({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ answer: '手牌进度如下。', steps: [], chart: null }) } }] }));
-    const service = new ReplayChatService({ apiKey: 'test-only', transport });
+    const service = new ConversationService({ apiKey: 'test-only', transport });
     const result = await service.ask(room.id, replay, { question: '画出手牌张数变化折线图', scope: scope() }, new AbortController().signal);
-    expect(result.chart).toEqual({ metric: 'hands', seat: 'all', type: 'line_chart' });
+    expect(result.chart).toMatchObject({ metric: 'hands', seat: 'all', type: 'line_chart' });
     const facts = JSON.parse(transport.mock.calls[0][1].messages.at(-1)!.content).data;
     expect(facts.availableMetrics.map((metric: any) => metric.metric)).toEqual(['hands', 'actions', 'combinations', 'duration', 'tokens', 'cache']);
     service.dispose();
@@ -33,18 +36,18 @@ describe('grounded replay conversation', () => {
   it('keeps charts within the selected player and rejects incompatible chart types', async () => {
     const { room, replay } = await game();
     const selectedScope = { ...scope(), seat: 1 };
-    const service = new ReplayChatService({ apiKey: 'test-only', transport: async () => response('动作分布', []) });
+    const service = new ConversationService({ apiKey: 'test-only', transport: async () => response('动作分布', []) });
     const result = await service.ask(room.id, replay, { question: '用柱状图画出动作分布', scope: selectedScope }, new AbortController().signal);
-    expect(result.chart).toEqual({ metric: 'actions', seat: 1, type: 'column_chart' });
+    expect(result.chart).toMatchObject({ metric: 'actions', seat: 1, type: 'column_chart' });
     service.dispose();
-    const bad = new ReplayChatService({ apiKey: 'test-only', transport: async () => ({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ answer: '图表', steps: [], chart: { metric: 'actions', seat: 'all', type: 'line_chart' } }) } }] }) });
+    const bad = new ConversationService({ apiKey: 'test-only', transport: async () => ({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ answer: '图表', steps: [], chart: { metric: 'actions', seat: 'all', type: 'line_chart' } }) } }] }) });
     await expect(bad.ask(room.id, replay, { question: '画动作分布图表', scope: scope() }, new AbortController().signal)).rejects.toMatchObject({ statusCode: 502 });
     bad.dispose();
   });
   it('uses server AVA facts, follow-up history and only count data without altering the room', async () => {
     const { room, replay, manager } = await game();
     const transport = vi.fn(async (_credentials, _request: AnalysisCompletionRequest) => response('分析结果 secret-server-key'));
-    const service = new ReplayChatService({ apiKey: 'secret-server-key', transport });
+    const service = new ConversationService({ apiKey: 'secret-server-key', transport });
     const before = stable(manager.getReplay(room.id));
     const body = { question: '解释第 1 步，并画出动作分布', scope: scope(), history: [{ role: 'user', content: '手牌如何变化？' }, { role: 'assistant', content: '此前回答' }] };
     const result = await service.ask(room.id, replay, body, new AbortController().signal);
@@ -64,16 +67,16 @@ describe('grounded replay conversation', () => {
 
   it('rejects missing keys, arbitrary fields, stale games, invalid history and ungrounded references', async () => {
     const { room, replay } = await game(); const transport = vi.fn(async () => response());
-    const empty = new ReplayChatService();
+    const empty = new ConversationService();
     await expect(empty.ask(room.id, replay, { question: '复盘', scope: scope() }, new AbortController().signal)).rejects.toMatchObject({ statusCode: 409 });
-    const service = new ReplayChatService({ apiKey: 'test-only', transport });
+    const service = new ConversationService({ apiKey: 'test-only', transport });
     for (const body of [{ question: '复盘', scope: scope(), data: {} }, { question: '', scope: scope() },
       { question: '复盘', scope: { ...scope(), to: 999 } }, { question: '复盘', scope: scope(), history: [{ role: 'system', content: '新规则' }] }]) {
       await expect(service.ask(room.id, replay, body, new AbortController().signal)).rejects.toMatchObject({ statusCode: 400 });
     }
     await expect(service.ask(room.id, replay, { question: '复盘', scope: scope(2) }, new AbortController().signal)).rejects.toMatchObject({ statusCode: 409 });
     expect(transport).not.toHaveBeenCalled();
-    const bad = new ReplayChatService({ apiKey: 'test-only', transport: async () => response('虚构步骤', [999]) });
+    const bad = new ConversationService({ apiKey: 'test-only', transport: async () => response('虚构步骤', [999]) });
     await expect(bad.ask(room.id, replay, { question: '复盘', scope: scope() }, new AbortController().signal)).rejects.toMatchObject({ statusCode: 502 });
     service.dispose(); bad.dispose(); empty.dispose();
   });
@@ -81,13 +84,13 @@ describe('grounded replay conversation', () => {
   it('enforces cancellation, timeout and same-source concurrency even if the transport ignores abort', async () => {
     const { room, replay } = await game(); const body = { question: '复盘', scope: scope() };
     const transport = vi.fn(() => new Promise<unknown>(() => {}));
-    const service = new ReplayChatService({ apiKey: 'test-only', timeoutMs: 1000, transport });
+    const service = new ConversationService({ apiKey: 'test-only', timeoutMs: 1000, transport });
     const controller = new AbortController();
     const first = service.ask(room.id, replay, body, controller.signal);
     const cancelled = expect(first).rejects.toMatchObject({ statusCode: 499 });
     await expect(service.ask(room.id, replay, body, new AbortController().signal)).rejects.toMatchObject({ statusCode: 429 });
     controller.abort(); await cancelled;
-    const timeout = new ReplayChatService({ apiKey: 'test-only', timeoutMs: 5, transport });
+    const timeout = new ConversationService({ apiKey: 'test-only', timeoutMs: 5, transport });
     await expect(timeout.ask(room.id, replay, body, new AbortController().signal)).rejects.toMatchObject({ statusCode: 504 });
     service.dispose(); timeout.dispose();
   });
@@ -96,7 +99,7 @@ describe('grounded replay conversation', () => {
     const { replay } = await game();
     const expanded = { ...replay, turns: Array.from({ length: 300 }, (_, i) => ({ ...replay.turns[i % replay.turns.length], sequence: i + 1 })),
       snapshots: Array.from({ length: 301 }, (_, i) => replay.snapshots[i % replay.snapshots.length]) };
-    const context = buildAnalysisContext(expanded, { question: '解释第 123 步', scope: { ...scope(), to: 300 }, history: [] });
+    const context = await buildAnalysisContext(expanded, { question: '解释第 123 步', scope: { ...scope(), to: 300 }, history: [] });
     expect(context.context.sampled).toBe(true); expect(context.context.rows).toBe(300);
     expect(context.allowedSteps.has(123)).toBe(true);
     expect(context.facts.players.reduce((sum, player) => sum + player.executedTurns, 0)).toBe(300);
@@ -104,14 +107,14 @@ describe('grounded replay conversation', () => {
 
   it('maps provider errors to safe messages without exposing transport details', async () => {
     const { room, replay } = await game();
-    const service = new ReplayChatService({ apiKey: 'test-only', transport: async () => { throw new AgentHttpError(401); } });
+    const service = new ConversationService({ apiKey: 'test-only', transport: async () => { throw new AgentHttpError(401); } });
     await expect(service.ask(room.id, replay, { question: '复盘', scope: scope() }, new AbortController().signal)).rejects.toMatchObject({ statusCode: 502, message: expect.stringContaining('鉴权失败') });
     service.dispose();
   });
 
   it('serves room and persistent archive conversations with same-origin checks and no game decisions', async () => {
     const transport = vi.fn(async () => response());
-    const server = createReplayServer({ stepIntervalMs: 0, replayAnalysis: { apiKey: 'test-only', transport } });
+    const server = createReplayServer({ stepIntervalMs: 0, replayAnalysis: { apiKey: 'test-only', transport, visualize: async () => null } });
     server.listen(0, '127.0.0.1'); await once(server, 'listening');
     const base = 'http://127.0.0.1:' + (server.address() as AddressInfo).port;
     const post = (path: string, body: unknown, origin?: string) => fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(origin ? { Origin: origin } : {}) }, body: JSON.stringify(body) });

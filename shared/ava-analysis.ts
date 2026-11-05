@@ -1,17 +1,24 @@
-import { Advisor, DataFrame, getInsights, insightPatternsExtractor, type NumberFieldInfo, type PatternInfo } from '@antv/ava';
-import { metricLabels, type AnalysisDataset, type AnalysisPoint } from './replay-analysis.js';
+import type { AnalysisDataset } from './replay-analysis.js';
+import { replayPatterns } from './replay-patterns.js';
 
 export type AnalysisChartType = 'line_chart' | 'column_chart' | 'grouped_column_chart' | 'scatter_plot';
 export const chartLabels: Record<AnalysisChartType, string> = { line_chart: '折线图', column_chart: '柱状图', grouped_column_chart: '分组柱状图', scatter_plot: '散点图' };
 export interface AnalysisInsight { text: string; steps: number[] }
 export interface AvaAnalysis {
-  recommendations: { type: AnalysisChartType; score: number }[];
+  recommendations: { type: AnalysisChartType }[];
   insights: AnalysisInsight[];
   stats: { mean: number; min: number; max: number } | null;
   errors: string[];
 }
 
-export function runAvaAnalysis(dataset: AnalysisDataset): AvaAnalysis {
+// V4 recommendation is model-backed. Keep offline chart choices deterministic
+// rather than making a model call when a filter changes.
+export function defaultChartType(dataset: AnalysisDataset): AnalysisChartType {
+  if (dataset.categorical) return new Set(dataset.points.map((point) => point.series)).size > 1 ? 'grouped_column_chart' : 'column_chart';
+  return dataset.metric === 'hands' ? 'line_chart' : 'scatter_plot';
+}
+
+export async function runAvaAnalysis(dataset: AnalysisDataset): Promise<AvaAnalysis> {
   const result: AvaAnalysis = { recommendations: [], insights: [], stats: null, errors: [] };
   if (!dataset.points.length) return result;
   const measure = dataset.measureLabel ?? metricLabels[dataset.metric];
@@ -31,10 +38,14 @@ export function runAvaAnalysis(dataset: AnalysisDataset): AvaAnalysis {
       .map((advice) => ({ type: advice.type as AnalysisChartType, score: advice.score }));
   } catch { result.errors.push('AVA 图表推荐暂不可用，可手动选择图表'); }
   try {
-    const groups = new Map<string, AnalysisPoint[]>();
-    for (const point of dataset.points) {
-      const group = groups.get(point.series) ?? [];
-      group.push(point); groups.set(point.series, group);
+    const { AVA } = await import('@antv/ava/browser');
+    ava = new AVA({ engine: { type: 'javascript' }, llm: { model: 'unused-local-profile' } });
+    await ava.source({ type: 'json', options: { data: dataset.points.map((point) => ({ value: point.y })) } });
+    const profile = await ava.profile({ metrics: ['mean', 'min', 'max'] });
+    const metrics = profile.models[0]?.columns.find((column) => column.name === 'value')?.metrics;
+    const mean = metrics?.mean, min = metrics?.min, max = metrics?.max;
+    if (typeof mean !== 'number' || typeof min !== 'number' || typeof max !== 'number' || ![mean, min, max].every(Number.isFinite)) {
+      throw new Error('Invalid AVA profile');
     }
     for (const [series, points] of groups) {
       if (points.length < 3) continue;

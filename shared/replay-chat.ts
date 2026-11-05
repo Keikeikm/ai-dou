@@ -13,7 +13,9 @@ export interface AnalysisChatRequest { question: string; scope: AnalysisScope; h
 export interface AnalysisChatReply {
   answer: string;
   steps: number[];
-  chart: { metric: AnalysisScope['metric']; seat: number | 'all'; type?: import('./ava-analysis.js').AnalysisChartType } | null;
+  chart: { metric: AnalysisScope['metric']; seat: number | 'all'; type?: import('./ava-analysis.js').AnalysisChartType;
+    avaType?: import('./ava-charts.js').AvaChartType; xMetric?: AnalysisScope['metric']; yMetric?: AnalysisScope['metric'];
+    visualization?: import('./ava-charts.js').AvaVisualization; visualizationError?: string } | null;
   scope: AnalysisScope;
   model: string;
   usage: { promptTokens: number | null; completionTokens: number | null; totalTokens: number | null };
