@@ -5,7 +5,9 @@ import { captureSnapshot } from '../game/snapshots.js';
 import { createAgentRequest } from '../agents/protocol.js';
 import { identifyCombination } from '../game/combos.js';
 import { createBluffGame, applyBluffAction, observeBluff, type BluffState } from '../bluff/game.js';
-import { emptyMetrics, type EpisodeRaw, type EpisodeSummary, type DataPlayer, type EpisodeStatus, type StoredEpisode } from '../../shared/game-data.js';
+import { createBlackjackGame, applyBlackjackAction, observeBlackjack } from '../blackjack/game.js';
+import { BLACKJACK_RULES_VERSION } from '../../shared/blackjack.js';
+import { emptyMetrics, type EpisodeRaw, type EpisodeSummary, type DataPlayer, type EpisodeStatus, type StoredEpisode, type EpisodePlayer } from '../../shared/game-data.js';
 import { combinationNames } from '../../shared/analysis-support.js';
 import { LEGACY_BLUFF_RULES_VERSION } from '../../shared/bluff.js';
 
@@ -25,11 +27,33 @@ export function cleanJournal(journal: Extract<EpisodeRaw, { game: 'doudizhu' }>[
 export function bluffInitial(raw: Extract<EpisodeRaw, { game: 'bluff' }>): BluffState {
   const state = createBluffGame(undefined, raw.rulesVersion ?? LEGACY_BLUFF_RULES_VERSION); state.hands = structuredClone(raw.initialHands); return state;
 }
+export function blackjackInitial(raw: Extract<EpisodeRaw, { game: 'blackjack' }>) {
+  if (raw.rulesVersion !== BLACKJACK_RULES_VERSION) throw new Error('不支持的 21 点规则版本');
+  return createBlackjackGame(raw.deck);
+}
 export function summarizeEpisode(input: EpisodeInput, now = Date.now()): StoredEpisode {
   const raw: EpisodeRaw = input.raw.game === 'doudizhu' ? { game: 'doudizhu', journal: cleanJournal(input.raw.journal) } : structuredClone(input.raw);
-  const players = input.players.map((player) => ({ ...player, metrics: emptyMetrics(), won: null as boolean | null, role: '对手' }));
+  const players: EpisodePlayer[] = input.players.map((player) => ({ ...player, metrics: emptyMetrics(), won: null as boolean | null, role: '对手' }));
   let finished = false;
-  if (raw.game === 'bluff') {
+  if (raw.game === 'blackjack') {
+    const state = blackjackInitial(raw);
+    for (const step of raw.steps) {
+      const m = players.find((player) => player.seat === step.seat)!.metrics;
+      m.actions++;
+      if (step.source === 'model') { m.modelMs += step.durationMs; m.modelSamples++; }
+      const label = step.action.type === 'hit' ? '要牌' : '停牌';
+      m.distribution[label] = (m.distribution[label] ?? 0) + 1;
+      applyBlackjackAction(state, step.seat, step.action);
+    }
+    finished = state.phase === 'finished';
+    players.forEach((player) => {
+      player.role = '对手';
+      if (finished) {
+        player.outcome = state.result === 'push' ? 'push' : player.seat === state.winner ? 'win' : 'loss';
+        player.won = player.outcome === 'push' ? null : player.outcome === 'win';
+      }
+    });
+  } else if (raw.game === 'bluff') {
     const state = bluffInitial(raw);
     for (const step of raw.steps) {
       const m = players.find((player) => player.seat === step.seat)!.metrics;
@@ -75,9 +99,9 @@ export function summarizeEpisode(input: EpisodeInput, now = Date.now()): StoredE
   }
   const status = finished ? 'finished' : input.status === 'finished' ? 'interrupted' : input.status;
   return { id: input.id, roomId: input.roomId, generation: input.generation, startedAt: input.startedAt, updatedAt: now,
-    game: raw.game, schemaVersion: 1, rulesVersion: raw.game === 'bluff' ? raw.rulesVersion ?? LEGACY_BLUFF_RULES_VERSION : 'doudizhu-v1',
-    status, finishedAt: status === 'finished' ? input.endedAt ?? (raw.game === 'bluff' ? raw.steps.at(-1)?.at : raw.journal.turns.at(-1)?.at) ?? now : null, players, imported: input.imported ?? false,
-    steps: raw.game === 'bluff' ? raw.steps.length : raw.journal.turns.length, raw };
+    game: raw.game, schemaVersion: 1, rulesVersion: raw.game === 'doudizhu' ? 'doudizhu-v1' : raw.game === 'blackjack' ? raw.rulesVersion : raw.rulesVersion ?? LEGACY_BLUFF_RULES_VERSION,
+    status, finishedAt: status === 'finished' ? input.endedAt ?? (raw.game === 'doudizhu' ? raw.journal.turns.at(-1)?.at : raw.steps.at(-1)?.at) ?? now : null, players, imported: input.imported ?? false,
+    steps: raw.game === 'doudizhu' ? raw.journal.turns.length : raw.steps.length, raw };
 }
 export function summaryOnly(episode: StoredEpisode): EpisodeSummary { const { raw: _, ...summary } = episode; return summary; }
 
@@ -87,7 +111,8 @@ export function* trainingTransitions(episode: StoredEpisode, profileId?: string)
   const raw = episode.raw;
   let dd = raw.game === 'doudizhu' ? createGame(raw.journal.seed) : null;
   const bluff = raw.game === 'bluff' ? bluffInitial(raw) : null;
-  const steps = raw.game === 'bluff' ? raw.steps : raw.journal.turns;
+  const blackjack = raw.game === 'blackjack' ? blackjackInitial(raw) : null;
+  const steps = raw.game === 'doudizhu' ? raw.journal.turns : raw.steps;
   for (let index = 0; index < steps.length; index++) {
     const step = steps[index];
     const actor = episode.players.find((player) => player.seat === step.seat)!;
@@ -100,27 +125,34 @@ export function* trainingTransitions(episode: StoredEpisode, profileId?: string)
       const { request_id: _, deadline_at: __, ...observation } = request;
       return { ...observation, current_actor: dd.currentSeat };
     };
-    const observation = bluff ? observeBluff(bluff, step.seat as 0 | 1) : ddView();
-    const action = raw.game === 'bluff' ? raw.steps[index].action : raw.journal.turns[index].action;
+    const observation = blackjack ? observeBlackjack(blackjack, step.seat as 0 | 1) : bluff ? observeBluff(bluff, step.seat as 0 | 1) : ddView();
+    const action = raw.game === 'doudizhu' ? raw.journal.turns[index].action : raw.steps[index].action;
+    if (blackjack && raw.game === 'blackjack') applyBlackjackAction(blackjack, raw.steps[index].seat, raw.steps[index].action);
     if (bluff && raw.game === 'bluff') applyBluffAction(bluff, raw.steps[index].seat, raw.steps[index].action);
     if (dd && raw.game === 'doudizhu') dd = applyGameAction(dd, step.seat, raw.journal.turns[index].action);
-    const nextObservation = bluff ? observeBluff(bluff, step.seat as 0 | 1) : ddView();
+    const nextObservation = blackjack ? observeBlackjack(blackjack, step.seat as 0 | 1) : bluff ? observeBluff(bluff, step.seat as 0 | 1) : ddView();
     const last = index === steps.length - 1;
     const terminated = last && episode.status === 'finished';
     const truncated = last && episode.status !== 'finished';
-    const source = raw.game === 'bluff' ? raw.steps[index].source : raw.journal.turns[index].source === 'fallback' ? 'fallback' : raw.journal.turns[index].decisionKind ?? (actor.kind === 'human' ? 'human' : 'unknown');
+    const source = raw.game !== 'doudizhu' ? raw.steps[index].source : raw.journal.turns[index].source === 'fallback' ? 'fallback' : raw.journal.turns[index].decisionKind ?? (actor.kind === 'human' ? 'human' : 'unknown');
     if (profileId && actor.profileId !== profileId) continue;
     yield { schema_version: 1, game: episode.game, rules_version: episode.rulesVersion, episode_id: episode.id, split, step: index + 1,
       actor_id: actor.profileId, actor_name: actor.name, actor_seat: actor.seat, behavior_source: source, policy: { kind: actor.kind, model: actor.model ?? null, strategy: actor.strategy ?? null },
       observation, action, next_observation: nextObservation, next_observation_timing: 'after_one_environment_action',
-      reward: truncated ? null : terminated ? actor.won ? 1 : -1 : 0,
-      reward_by_seat: terminated ? episode.players.map((player) => ({ seat: player.seat, reward: player.won ? 1 : -1 })) : null,
-      terminated, truncated, outcome: actor.won, imitation_eligible: source === 'human' || source === 'model',
-      timestamp: raw.game === 'bluff' ? raw.steps[index].at : raw.journal.turns[index].at ?? null };
+      reward: truncated ? null : terminated ? actor.outcome === 'push' ? 0 : actor.won ? 1 : -1 : 0,
+      reward_by_seat: terminated ? episode.players.map((player) => ({ seat: player.seat, reward: player.outcome === 'push' ? 0 : player.won ? 1 : -1 })) : null,
+      terminated, truncated, outcome: actor.won, outcome_label: actor.outcome ?? (actor.won === null ? null : actor.won ? 'win' : 'loss'), imitation_eligible: source === 'human' || source === 'model',
+      timestamp: raw.game === 'doudizhu' ? raw.journal.turns[index].at ?? null : raw.steps[index].at };
   }
 }
 
 export function episodeSnapshots(episode: StoredEpisode) {
+  if (episode.raw.game === 'blackjack') {
+    const state = blackjackInitial(episode.raw);
+    const snapshots = [observeBlackjack(state, 0)];
+    for (const step of episode.raw.steps) { applyBlackjackAction(state, step.seat, step.action); snapshots.push(observeBlackjack(state, 0)); }
+    return snapshots;
+  }
   if (episode.raw.game === 'bluff') {
     const state = bluffInitial(episode.raw);
     const snapshots = [observeBluff(state, 0)];

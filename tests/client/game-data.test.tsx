@@ -10,7 +10,7 @@ import type { DataResponse } from '../../shared/game-data.js';
 const episode = summarizeEpisode(bluffEpisode());
 function response(total = 1): DataResponse {
   return { total, limit: 12, offset: 0, active: 0, games: total ? [summaryOnly(episode)] : [], profiles: [{ id: 'human_local', name: '我', createdAt: 0 }], storage: { persistent: true, schemaVersion: 1 },
-    overview: { total, finished: total, incomplete: 0, steps: episode.steps, humanSteps: 13, fallbackSteps: 0, gameCounts: { bluff: total, doudizhu: 0 }, distribution: { '如实出牌': 2, '吹牛出牌': 11, '相信': 13 },
+    overview: { total, finished: total, incomplete: 0, steps: episode.steps, humanSteps: 13, fallbackSteps: 0, gameCounts: { bluff: total, doudizhu: 0, blackjack: 0 }, distribution: { '如实出牌': 2, '吹牛出牌': 11, '相信': 13 },
       players: total ? episode.players.map((p) => ({ profileId: p.profileId, name: p.name, kind: p.kind, games: total, completed: total, wins: p.won ? total : 0, metrics: p.metrics, roles: {} })) : [], trend: total ? [{ day: '2026-11-01', games: total, completed: total, wins: total, actions: episode.steps }] : [] } };
 }
 function setup(data = response()) {

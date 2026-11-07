@@ -8,7 +8,7 @@ import { episodeSnapshots, trainingTransitions } from './episodes.js';
 export function dataFilter(url: URL): DataFilter {
   const filter: DataFilter = {};
   const game = url.searchParams.get('game'); const status = url.searchParams.get('status'); const profileId = url.searchParams.get('profileId');
-  if (game) { if (game !== 'bluff' && game !== 'doudizhu') throw new RoomError(400, '无效游戏类型'); filter.game = game; }
+  if (game) { if (game !== 'bluff' && game !== 'doudizhu' && game !== 'blackjack') throw new RoomError(400, '无效游戏类型'); filter.game = game; }
   if (status) { if (!['finished', 'abandoned', 'interrupted'].includes(status)) throw new RoomError(400, '无效对局状态'); filter.status = status as NonNullable<DataFilter['status']>; }
   if (profileId) { if (!/^[a-zA-Z0-9_-]{1,512}$/.test(profileId)) throw new RoomError(400, '无效玩家档案'); filter.profileId = profileId; }
   for (const key of ['from', 'to'] as const) {
