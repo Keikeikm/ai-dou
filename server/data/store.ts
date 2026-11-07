@@ -56,7 +56,7 @@ export class DataStore {
   }
   save(input: EpisodeInput): void {
     const existing = this.db.prepare('SELECT status, steps, summary_json FROM data_episodes WHERE id=?').get(input.id);
-    const steps = input.raw.game === 'bluff' ? input.raw.steps.length : input.raw.journal.turns.length;
+    const steps = input.raw.game === 'doudizhu' ? input.raw.journal.turns.length : input.raw.steps.length;
     if (existing && (Number(existing.steps) > steps || String(existing.status) !== 'active' && input.status === 'active')) return;
     if (existing && Number(existing.steps) === steps && String(existing.status) === input.status) return;
     const episode = summarizeEpisode(input);
@@ -131,7 +131,7 @@ export function dataPlayers(players: readonly { name: string; kind: string; seat
     identity: player.kind === 'human' ? 'profile' : 'agent', ...(player.kind === 'deepseek' ? { model } : {}), ...(player.skill ? { strategy: player.skill } : {}) }));
 }
 function aggregate(games: EpisodeSummary[], selected?: string): DataOverview {
-  const result: DataOverview = { total: games.length, finished: 0, incomplete: 0, steps: 0, humanSteps: 0, fallbackSteps: 0, players: [], trend: [], distribution: {}, gameCounts: { bluff: 0, doudizhu: 0 } };
+  const result: DataOverview = { total: games.length, finished: 0, incomplete: 0, steps: 0, humanSteps: 0, fallbackSteps: 0, players: [], trend: [], distribution: {}, gameCounts: { bluff: 0, doudizhu: 0, blackjack: 0 } };
   const players = new Map<string, PlayerAggregate>();
   const days = new Map<string, DataOverview['trend'][number]>();
   for (const game of games) {
@@ -141,8 +141,8 @@ function aggregate(games: EpisodeSummary[], selected?: string): DataOverview {
     const trend = days.get(day) ?? { day, games: 0, completed: 0, wins: 0, actions: 0 };
     trend.games++; if (complete) trend.completed++;
     for (const p of game.players) {
-      const a = players.get(p.profileId) ?? { profileId: p.profileId, name: p.name, kind: p.kind, games: 0, wins: 0, completed: 0, metrics: emptyMetrics(), roles: {} };
-      a.games++; if (complete) { a.completed++; if (p.won) a.wins++; const role = a.roles[p.role] ?? { games: 0, wins: 0 }; role.games++; if (p.won) role.wins++; a.roles[p.role] = role; }
+      const a = players.get(p.profileId) ?? { profileId: p.profileId, name: p.name, kind: p.kind, games: 0, wins: 0, draws: 0, completed: 0, metrics: emptyMetrics(), roles: {} };
+      a.games++; if (complete) { a.completed++; if (p.won) a.wins++; if (p.outcome === 'push') a.draws = (a.draws ?? 0) + 1; const role = a.roles[p.role] ?? { games: 0, wins: 0 }; role.games++; if (p.won) role.wins++; a.roles[p.role] = role; }
       for (const key of Object.keys(a.metrics) as (keyof typeof a.metrics)[]) if (key !== 'distribution') a.metrics[key] += p.metrics[key];
       for (const [name, count] of Object.entries(p.metrics.distribution)) a.metrics.distribution[name] = (a.metrics.distribution[name] ?? 0) + count;
       players.set(p.profileId, a);

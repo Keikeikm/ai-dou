@@ -13,6 +13,7 @@ import { ReplayTools, WatchControls } from './components/WatchControls.js';
 import { GameIcon } from './components/GameIcon.js';
 import { useHumanPlay } from './hooks/useHumanPlay.js';
 import { BluffGame } from './components/BluffGame.js';
+import { BlackjackGame } from './components/BlackjackGame.js';
 
 const ReplayAnalysis = lazy(() => import('./components/ReplayAnalysis.js'));
 const AnalyticsPage = lazy(() => import('./components/AnalyticsPage.js'));
@@ -24,13 +25,16 @@ class AnalysisBoundary extends Component<{ children: ReactNode }, { failed: bool
 type Panel = 'settings' | 'history' | 'response' | 'replay' | 'analysis' | null;
 const panelTitles = { settings: '房间设置', history: '出牌记录', response: '模型返回', replay: '回放与日志', analysis: '复盘分析' };
 
-type AppRoute = Route | { kind: 'bluff'; id?: string } | { kind: 'analytics' };
+type AppRoute = Route | { kind: 'bluff'; id?: string } | { kind: 'blackjack'; id?: string } | { kind: 'analytics' };
 function appRoute(path: string): AppRoute {
   if (/^\/analytics\/?$/.test(path)) return { kind: 'analytics' };
+  const blackjack = path.match(/^\/blackjack(?:\/(blackjack_[a-f0-9]{12}))?\/?$/);
+  if (blackjack) return { kind: 'blackjack', ...(blackjack[1] ? { id: blackjack[1] } : {}) };
   const bluff = path.match(/^\/bluff(?:\/(bluff_[a-f0-9]{12}))?\/?$/);
   return bluff ? { kind: 'bluff', ...(bluff[1] ? { id: bluff[1] } : {}) } : parseRoute(path);
 }
 export function App({ route = appRoute(window.location.pathname), navigate = (path: string) => window.location.assign(path) }: { route?: AppRoute; navigate?: (path: string) => void }) {
+  if (route.kind === 'blackjack') return <BlackjackGame {...(route.id ? { id: route.id } : {})} navigate={navigate} />;
   if (route.kind === 'analytics') return <AnalysisBoundary><Suspense fallback={<p className="room-loading" role="status">正在加载数据中心与 AVA…</p>}><AnalyticsPage /></Suspense></AnalysisBoundary>;
   return route.kind === 'bluff' ? <BluffGame {...(route.id ? { id: route.id } : {})} navigate={navigate} /> : <DoudizhuApp route={route} navigate={navigate} />;
 }

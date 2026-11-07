@@ -39,6 +39,16 @@ describe('React spectator application', () => {
     expect(game.calls()).toBe(0);
   });
 
+  it('opens the 21-point setup from the lobby without starting a game or model request', async () => {
+    const game = setup();
+    const navigate = vi.fn();
+    render(<App route={{ kind: 'home' }} navigate={navigate} />);
+    fireEvent.click(screen.getByRole('button', { name: /和鲸鱼娘玩 21 点/ }));
+    expect(navigate).toHaveBeenCalledWith('/blackjack');
+    expect(game.requests.some((request) => request.path.includes('/blackjack/rooms'))).toBe(false);
+    expect(game.calls()).toBe(0);
+  });
+
   it('keeps stale backends from creating fixed-deal rooms', async () => {
     const game = setup({ oldBackend: true });
     render(<App route={{ kind: 'home' }} />);
